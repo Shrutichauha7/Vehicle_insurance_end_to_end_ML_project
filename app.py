@@ -3,8 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import Response
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
-from starlette.responses import HTMLResponse, RedirectResponse
-from uvicorn import run as app_run
+from fastapi.responses import HTMLResponse, RedirectResponse
 
 from typing import Optional
 
@@ -16,11 +15,17 @@ from src.pipline.training_pipeline import TrainPipeline
 # Initialize FastAPI application
 app = FastAPI()
 
-# Mount the 'static' directory for serving static files (like CSS)
-app.mount("/static", StaticFiles(directory="static"), name="static")
+import os
 
-# Set up Jinja2 template engine for rendering HTML templates
-templates = Jinja2Templates(directory='templates')
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+
+app.mount(
+    "/static",
+    StaticFiles(directory=os.path.join(BASE_DIR, "static")),
+    name="static"
+)
+
+templates = Jinja2Templates(directory="templates")
 
 # Allow all origins for Cross-Origin Resource Sharing (CORS)
 origins = ["*"]
@@ -73,13 +78,12 @@ class DataForm:
         self.Vehicle_Damage_Yes = form.get("Vehicle_Damage_Yes")
 
 # Route to render the main page with the form
-@app.get("/", tags=["authentication"])
+@app.get("/")
 async def index(request: Request):
-    """
-    Renders the main HTML form page for vehicle data input.
-    """
     return templates.TemplateResponse(
-            "vehicledata.html",{"request": request, "context": "Rendering"})
+        "vehicledata.html",
+        {"request": request, "context": "Rendering"}
+    )
 
 # Route to trigger the model training process
 @app.get("/train")
@@ -134,12 +138,16 @@ async def predictRouteClient(request: Request):
         # Render the same HTML page with the prediction result
         return templates.TemplateResponse(
             "vehicledata.html",
-            {"request": request, "context": status},
+            {"request": request, "context": status}
         )
+
         
     except Exception as e:
         return {"status": False, "error": f"{e}"}
 
 # Main entry point to start the FastAPI server
 if __name__ == "__main__":
-    app_run(app, host=APP_HOST, port=APP_PORT)
+    import uvicorn
+    uvicorn.run("app:app", host=APP_HOST, port=APP_PORT, reload=True)
+
+
